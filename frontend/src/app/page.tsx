@@ -44,6 +44,7 @@ export default function Dashboard() {
   const [fileName, setFileName] = useState('');
   const [delaySec, setDelaySec] = useState('2');
   const [hourlyLimit, setHourlyLimit] = useState('100');
+  const [scheduledTime, setScheduledTime] = useState('');
   const [scheduleStatus, setScheduleStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -154,11 +155,12 @@ export default function Dashboard() {
     setScheduleStatus(null);
 
     try {
+      const startTime = scheduledTime ? new Date(scheduledTime).toISOString() : new Date().toISOString();
       const payload = {
         subject,
         body: body || '<p>Default message body</p>',
         recipients,
-        startTime: new Date().toISOString(),
+        startTime,
         delayMs: Math.max(0, parseInt(delaySec, 10) * 1000),
         hourlyLimit: Math.max(1, parseInt(hourlyLimit, 10)),
       };
@@ -184,6 +186,7 @@ export default function Dashboard() {
       setBody('');
       setRecipients([]);
       setFileName('');
+      setScheduledTime('');
       fetchEmails();
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Error scheduling campaign';
@@ -371,6 +374,22 @@ export default function Dashboard() {
                   className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500"
                 />
               </div>
+            </div>
+
+            {/* Scheduled Start Time / Timer Picker */}
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1 flex items-center gap-1">
+                <Calendar className="w-3.5 h-3.5 text-indigo-400" /> Scheduled Start Time (Leave blank for immediate)
+              </label>
+              <input
+                type="datetime-local"
+                value={scheduledTime}
+                onChange={(e) => setScheduledTime(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 [color-scheme:dark]"
+              />
+              <p className="text-[11px] text-slate-500 mt-1">
+                Persistent: Emails will wait safely in Redis & DB. Even if the server is stopped, they will dispatch once due when started.
+              </p>
             </div>
 
             {scheduleStatus && (
