@@ -48,8 +48,9 @@ export async function initiateGoogleAuth(req: Request, res: Response): Promise<v
 
     res.cookie('token', token, {
       httpOnly: true,
-      secure: env.NODE_ENV === 'production',
-      sameSite: env.NODE_ENV === 'production' ? 'none' : 'lax',
+      secure: process.env.NODE_ENV === 'production',
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      sameSite: (process.env.NODE_ENV === 'production' ? 'none' : 'lax') as any,
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
@@ -110,7 +111,7 @@ export async function googleAuthCallback(req: Request, res: Response): Promise<v
       return;
     }
 
-    const tokenData = await tokenResponse.json();
+    const tokenData = await tokenResponse.json() as { access_token: string };
 
     // Fetch user profile from Google
     const userinfoResponse = await fetch(GOOGLE_USERINFO_ENDPOINT, {
@@ -122,7 +123,12 @@ export async function googleAuthCallback(req: Request, res: Response): Promise<v
       return;
     }
 
-    const profile = await userinfoResponse.json();
+    const profile = await userinfoResponse.json() as {
+      sub: string;
+      email: string;
+      name: string;
+      picture?: string;
+    };
 
     // Upsert User in PostgreSQL
     const user = await prisma.user.upsert({
@@ -149,8 +155,9 @@ export async function googleAuthCallback(req: Request, res: Response): Promise<v
 
     res.cookie('token', token, {
       httpOnly: true,
-      secure: env.NODE_ENV === 'production',
-      sameSite: env.NODE_ENV === 'production' ? 'none' : 'lax',
+      secure: process.env.NODE_ENV === 'production',
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      sameSite: (process.env.NODE_ENV === 'production' ? 'none' : 'lax') as any,
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
@@ -209,7 +216,8 @@ export function logoutUser(_req: Request, res: Response): void {
   res.clearCookie('token', {
     httpOnly: true,
     secure: env.NODE_ENV === 'production',
-    sameSite: env.NODE_ENV === 'production' ? 'none' : 'lax',
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    sameSite: (process.env.NODE_ENV === 'production' ? 'none' : 'lax') as any,
   });
   res.json({ message: 'Logged out successfully' });
 }

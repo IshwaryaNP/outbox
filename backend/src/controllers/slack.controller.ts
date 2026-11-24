@@ -89,7 +89,13 @@ export async function slackCallback(req: Request, res: Response): Promise<void> 
       }),
     });
 
-    const data = await tokenResp.json();
+    const data = await tokenResp.json() as {
+      ok: boolean;
+      error?: string;
+      access_token?: string;
+      team?: { id?: string; name?: string };
+      incoming_webhook?: { channel?: string; url?: string };
+    };
     if (!data.ok) {
       console.error('[Slack OAuth] Exchange failed:', data);
       res.redirect(`${env.FRONTEND_URL}?slack_error=${encodeURIComponent(data.error || 'exchange_failed')}`);
