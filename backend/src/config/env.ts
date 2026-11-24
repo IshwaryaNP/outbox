@@ -25,7 +25,8 @@ const envSchema = z.object({
   SLACK_REDIRECT_URI: z.string().default('http://localhost:4000/api/slack/callback'),
   SEED_SENDER_COUNT: z.coerce.number().default(3),
   SMTP_TIMEOUT_MS: z.coerce.number().default(15000), // 15 seconds
-  STALE_PROCESSING_THRESHOLD_MINUTES: z.coerce.number().default(5), // 5 minutes (300,000ms > 15,000ms)
+  STALE_PROCESSING_THRESHOLD_MS: z.coerce.number().default(300000), // 5 minutes (300,000ms > 15,000ms)
+  DEV_AUTH_ENABLED: z.coerce.boolean().default(false),
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -33,6 +34,11 @@ const parsed = envSchema.safeParse(process.env);
 if (!parsed.success) {
   console.error('❌ Invalid environment configuration:', parsed.error.format());
   throw new Error('Environment variable validation failed');
+}
+
+if (parsed.data.DEV_AUTH_ENABLED && parsed.data.NODE_ENV === 'production') {
+  console.error('❌ DEV_AUTH_ENABLED is strictly prohibited when NODE_ENV=production');
+  throw new Error('DEV_AUTH_ENABLED is not allowed in production');
 }
 
 export const env = parsed.data;

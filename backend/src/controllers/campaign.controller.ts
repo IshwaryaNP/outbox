@@ -41,14 +41,10 @@ export async function scheduleCampaign(req: Request, res: Response): Promise<voi
   // 1. Dedupe recipients (normalize lowercase)
   const uniqueRecipients = [...new Set(recipients.map((r) => r.toLowerCase()))];
 
-  // 2. Load available senders (prefer custom/Gmail senders over Ethereal if present)
-  let senders = await prisma.sender.findMany({
-    where: { email: { not: { contains: 'ethereal.email' } } },
+  // 2. Load available senders (round-robin across all active senders)
+  const senders = await prisma.sender.findMany({
     orderBy: { createdAt: 'asc' },
   });
-  if (senders.length === 0) {
-    senders = await prisma.sender.findMany({ orderBy: { createdAt: 'asc' } });
-  }
   if (senders.length === 0) {
     res.status(400).json({ error: 'No SMTP senders configured. Run npm run seed:senders first.' });
     return;

@@ -10,10 +10,10 @@ import type { EmailJobData } from '../types/index.js';
  * 2. Queries all 'scheduled' emails and ensures they exist in BullMQ.
  * 3. Any missing job is re-added with jobId = email.id.
  */
-export async function reconcileStartupJobs(staleThresholdMinutes = env.STALE_PROCESSING_THRESHOLD_MINUTES): Promise<void> {
-  console.log('🔄 [Reconciliation] Running startup job reconciliation...');
+export async function reconcileStartupJobs(staleThresholdMs = env.STALE_PROCESSING_THRESHOLD_MS): Promise<void> {
+  console.log(`🔄 [Reconciliation] Running startup job reconciliation (Stale threshold: ${staleThresholdMs}ms)...`);
 
-  const staleCutoff = new Date(Date.now() - staleThresholdMinutes * 60 * 1000);
+  const staleCutoff = new Date(Date.now() - staleThresholdMs);
 
   // 1. Reset stale 'processing' emails older than threshold back to 'scheduled'
   const resetCount = await prisma.email.updateMany({
@@ -44,7 +44,19 @@ export async function reconcileStartupJobs(staleThresholdMinutes = env.STALE_PRO
   for (const email of scheduledEmails) {
     // Check if job exists in BullMQ
     const existingJob = await emailQueue.getJob(email.id);
+    let shouldAdd = false;
+
     if (!existingJob) {
+      shouldAdd = true;
+    } else {
+      const state = await existingJob.getState();
+      if (state === 'failed') {
+        await existingJob.remove();
+        shouldAdd = true;
+      }
+    }
+
+    if (shouldAdd) {
       const delay = Math.max(0, email.scheduledAt.getTime() - now);
       await emailQueue.add(
         'send-email',

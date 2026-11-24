@@ -18,11 +18,20 @@ export async function initiateGoogleAuth(req: Request, res: Response): Promise<v
   // Store state in Redis for 10 minutes to prevent CSRF
   await redis.set(`oauth_state:google:${state}`, '1', 'EX', 600);
 
-  // If in local dev and no client ID configured, allow quick mock login for verification
-  if (!env.GOOGLE_CLIENT_ID || env.GOOGLE_CLIENT_ID === 'mock-google-client-id') {
+  // DEV_AUTH_ENABLED gate: default false, refused in production, never enabled unless explicitly requested
+  if (env.DEV_AUTH_ENABLED) {
+    if (env.NODE_ENV === 'production') {
+      res.status(403).json({ error: 'DEV_AUTH_ENABLED is strictly prohibited in production' });
+      return;
+    }
+    // Upsert dev mock user
     const devUser = await prisma.user.upsert({
       where: { googleId: 'google-oauth-mock-user-001' },
-      update: {},
+      update: {
+        name: 'Ishwarya Poojary',
+        email: 'ishwarya.poojary@gmail.com',
+        avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150',
+      },
       create: {
         googleId: 'google-oauth-mock-user-001',
         email: 'ishwarya.poojary@gmail.com',

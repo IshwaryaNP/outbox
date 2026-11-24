@@ -124,13 +124,14 @@ export function createEmailWorker(): Worker<EmailJobData> {
           },
         });
 
-        // If max attempts reached, mark as failed
-        if (updated.attempts >= 5) {
-          await prisma.email.update({
-            where: { id: emailId },
-            data: { status: 'failed' },
-          });
-        }
+        // Increment attempts and update status
+        const isFatal = updated.attempts >= 5;
+        await prisma.email.update({
+          where: { id: emailId },
+          data: {
+            status: isFatal ? 'failed' : 'scheduled',
+          },
+        });
 
         throw sendError; // Triggers BullMQ backoff retry
       }
