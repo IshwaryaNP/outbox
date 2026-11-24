@@ -49,6 +49,14 @@ if (env.NODE_ENV !== 'development') {
       res.status(401).send('Unauthorized');
       return;
     }
+    const credentials = Buffer.from(auth.split(' ')[1], 'base64').toString('ascii');
+    const [, password] = credentials.split(':');
+    const expectedPassword = env.BULL_BOARD_PASSWORD || 'admin';
+    if (password !== expectedPassword) {
+      res.set('WWW-Authenticate', 'Basic realm="Admin"');
+      res.status(401).send('Unauthorized');
+      return;
+    }
     next();
   });
 }

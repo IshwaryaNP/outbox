@@ -10,6 +10,7 @@
     "worker": "tsx watch src/workers/email.worker.ts",
     "worker:prod": "node dist/workers/email.worker.js",
     "prisma:generate": "prisma generate",
+    "postinstall": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:push": "prisma db push",
     "seed:senders": "tsx src/db/seed-senders.ts",
