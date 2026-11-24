@@ -4,7 +4,7 @@ import React from 'react';
 
 export default function LoginPage() {
   const handleGoogleLogin = () => {
-    window.location.href = 'http://localhost:4000/api/auth/google';
+    window.location.href = `${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000'}/api/auth/google`;
   };
 
   return (

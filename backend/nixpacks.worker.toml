@@ -1,0 +1,12 @@
+# ── Nixpacks: worker service ──────────────────────────────────────────────────
+[phases.setup]
+nixPkgs = ["nodejs_20"]
+
+[phases.install]
+cmds = ["npm install"]
+
+[phases.build]
+cmds = ["npm run build", "npx prisma generate"]
+
+[start]
+cmd = "npm run worker:prod"
