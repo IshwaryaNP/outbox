@@ -7,6 +7,7 @@ import { ExpressAdapter } from '@bull-board/express';
 import { env } from './config/env.js';
 import apiRoutes from './routes/index.js';
 import { emailQueue } from './queues/email.queue.js';
+import { reconcileStartupJobs } from './services/reconciler.service.js';
 
 const app = express();
 
@@ -60,10 +61,11 @@ app.use((err: Error, _req: express.Request, res: express.Response, _next: expres
 });
 
 // --- Start server ---
-const server = app.listen(env.PORT, () => {
+const server = app.listen(env.PORT, async () => {
   console.log(`🚀 Server running on http://localhost:${env.PORT}`);
   console.log(`📊 Bull Board at http://localhost:${env.PORT}/admin/queues`);
   console.log(`🔧 Environment: ${env.NODE_ENV}`);
+  await reconcileStartupJobs();
 });
 
 // Graceful shutdown

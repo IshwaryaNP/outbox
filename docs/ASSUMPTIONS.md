@@ -5,9 +5,14 @@ This document records all architectural decisions, design assumptions, and defau
 ---
 
 ## 1. Environment & Infrastructure
-- **Docker Compose**: Standard `docker-compose.yml` provides containerized services for PostgreSQL (`postgres:16-alpine`), Redis (`redis:7-alpine` with `appendonly yes` and volume persistence `redis_data`), and Elasticsearch (`elasticsearch:8.13.4` with single-node cluster and security disabled for development).
-- **Local Fallback / Hybrid Execution**: PostgreSQL 18 is running locally on port 5432. The system supports both containerized deployment (`docker compose up -d`) and local service connection strings via configurable environment variables in `.env`.
+- **Docker Compose Status**: Docker Desktop is not installed or available on this host environment. Redis 7 (AOF enabled) and PostgreSQL 18 are running natively within WSL Ubuntu. `docker-compose.yml` provides the production container specification, but local tests were executed against the native WSL services. Full Docker container boot was **NOT tested** due to lack of the Docker daemon.
+- **Local Fallback / Hybrid Execution**: PostgreSQL 18 is running on port 5433 (WSL). Redis 7 is on port 6379. The system supports both containerized deployment (`docker compose up -d`) and local service connection strings via configurable environment variables in `.env`.
 - **Operating System**: Windows host with cross-platform node scripts (`cross-env` where applicable) to guarantee seamless execution on both Windows and Linux/macOS environments.
+
+---
+
+## 1.1 Delivery Guarantees & At-Least-Once Window
+- **At-Least-Once Delivery**: If a worker process crashes after an SMTP server accepts an email but before the database transaction updates status to `sent`, BullMQ's retry mechanism or startup reconciler will reprocess the job. The atomic SQL claim (`UPDATE "Email" SET status='processing' WHERE status='scheduled'`) guarantees single active worker execution, but the network gap between SMTP transmission and DB write constitutes an honest at-least-once window. True end-to-end exactly-once delivery across external SMTP boundaries is fundamentally impossible without two-phase commit support from external mail transfer agents.
 
 ---
 

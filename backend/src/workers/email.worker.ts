@@ -14,8 +14,11 @@ export function createEmailWorker(): Worker<EmailJobData> {
   const worker = new Worker<EmailJobData>(
     EMAIL_QUEUE_NAME,
     async (job: Job<EmailJobData>, token?: string) => {
-      const { emailId, campaignId, userId, senderId, recipient, subject, body } = job.data;
-      console.log(`[Worker] Processing Job ${job.id} -> Recipient: ${recipient}`);
+      const { emailId, campaignId, userId, senderId, recipient, subject, body, scheduledAt } = job.data;
+      const startedAt = Date.now();
+      const dueAt = new Date(scheduledAt).getTime();
+      const lagMs = Math.max(0, startedAt - dueAt);
+      console.log(`[Worker] Processing Job ${job.id} -> Recipient: ${recipient} | dueAt: ${new Date(dueAt).toISOString()} | startedAt: ${new Date(startedAt).toISOString()} | lagMs: ${lagMs}ms`);
 
       // 1. ATOMIC IDEMPOTENCY CLAIM
       // UPDATE emails SET status='processing' WHERE id=$1 AND status='scheduled'
