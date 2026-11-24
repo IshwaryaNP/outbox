@@ -3,8 +3,10 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "build": "npm run build --prefix backend",
-    "start": "npm run start --prefix backend",
+    "build": "npm run build --prefix frontend",
+    "start": "npm run start --prefix frontend",
+    "backend:build": "npm run build --prefix backend",
+    "backend:start": "npm run start --prefix backend",
     "worker:prod": "npm run worker:prod --prefix backend"
   }
 }
