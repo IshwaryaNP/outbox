@@ -1,7 +1,17 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Upload, Mail, Calendar, Clock, Send, CheckCircle2, AlertCircle, RefreshCw, Layers, ExternalLink } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Upload, Mail, Calendar, Clock, Send, CheckCircle2, AlertCircle, RefreshCw, Layers, ExternalLink, LogOut, MessageSquare } from 'lucide-react';
+
+interface UserProfile {
+  id: string;
+  email: string;
+  name: string;
+  avatar?: string | null;
+  slackConnected: boolean;
+  slackChannel?: string | null;
+}
 
 interface EmailItem {
   id: string;
@@ -12,21 +22,20 @@ interface EmailItem {
   sentAt?: string | null;
   attempts: number;
   messageId?: string | null;
-  sender?: { email: string; smtpHost?: string } | null;
 }
 
-const DEV_USER_ID = '7d490784-bd9e-4b47-a9e9-8538544dca41';
 const API_BASE = 'http://localhost:4000/api';
 
 export default function Dashboard() {
+  const router = useRouter();
   const [mounted, setMounted] = useState(false);
+  const [user, setUser] = useState<UserProfile | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+
+  // Tabs & Data
   const [activeTab, setActiveTab] = useState<'scheduled' | 'sent'>('scheduled');
   const [emails, setEmails] = useState<EmailItem[]>([]);
   const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   // Form State
   const [subject, setSubject] = useState('');
@@ -38,12 +47,31 @@ export default function Dashboard() {
   const [scheduleStatus, setScheduleStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  // Fetch emails
+  // 1. Fetch authenticated user profile via signed httpOnly cookie
+  const fetchUser = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_BASE}/auth/me`, {
+        credentials: 'include',
+      });
+      if (!res.ok) {
+        router.push('/login');
+        return;
+      }
+      const data = await res.json();
+      setUser(data.user);
+    } catch {
+      router.push('/login');
+    } finally {
+      setAuthLoading(false);
+    }
+  }, [router]);
+
+  // 2. Fetch user-scoped emails
   const fetchEmails = useCallback(async () => {
     setLoading(true);
     try {
       const res = await fetch(`${API_BASE}/emails?status=${activeTab}`, {
-        headers: { 'X-Dev-User-Id': DEV_USER_ID },
+        credentials: 'include',
       });
       if (res.ok) {
         const data = await res.json();
@@ -57,12 +85,41 @@ export default function Dashboard() {
   }, [activeTab]);
 
   useEffect(() => {
-    fetchEmails();
-    const interval = setInterval(fetchEmails, 5000);
-    return () => clearInterval(interval);
-  }, [fetchEmails]);
+    setMounted(true);
+    fetchUser();
+  }, [fetchUser]);
 
-  // Handle CSV/TXT File Upload & Client-side regex extraction + deduplication
+  useEffect(() => {
+    if (user) {
+      fetchEmails();
+      const interval = setInterval(fetchEmails, 5000);
+      return () => clearInterval(interval);
+    }
+  }, [user, fetchEmails]);
+
+  // Logout
+  const handleLogout = async () => {
+    await fetch(`${API_BASE}/auth/logout`, {
+      method: 'POST',
+      credentials: 'include',
+    });
+    router.push('/login');
+  };
+
+  // Slack Connect / Disconnect
+  const handleSlackConnect = () => {
+    window.location.href = `${API_BASE}/slack/connect`;
+  };
+
+  const handleSlackDisconnect = async () => {
+    await fetch(`${API_BASE}/slack/disconnect`, {
+      method: 'DELETE',
+      credentials: 'include',
+    });
+    fetchUser();
+  };
+
+  // CSV/TXT File Upload
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -73,11 +130,8 @@ export default function Dashboard() {
       const content = event.target?.result as string;
       if (!content) return;
 
-      // Extract emails using standard regex pattern
       const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
       const matches = content.match(emailRegex) || [];
-
-      // Deduplicate and lowercase
       const unique = Array.from(new Set(matches.map((email) => email.toLowerCase())));
       setRecipients(unique);
     };
@@ -111,10 +165,8 @@ export default function Dashboard() {
 
       const res = await fetch(`${API_BASE}/campaigns/schedule`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Dev-User-Id': DEV_USER_ID,
-        },
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify(payload),
       });
 
@@ -128,7 +180,6 @@ export default function Dashboard() {
         message: `Success! ${data.scheduledCount} emails enqueued into BullMQ (deduped: ${data.deduped}).`,
       });
 
-      // Clear form
       setSubject('');
       setBody('');
       setRecipients([]);
@@ -142,18 +193,18 @@ export default function Dashboard() {
     }
   };
 
-  if (!mounted) {
+  if (!mounted || authLoading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center text-slate-500 text-sm">
-        Loading Outbox Scheduler...
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center text-slate-400 text-sm">
+        Authenticating session...
       </div>
     );
   }
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
-      {/* Header */}
-      <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center pb-6 border-b border-slate-800 gap-4">
+      {/* Top Header with User Profile & Slack OAuth */}
+      <header className="flex flex-col md:flex-row justify-between items-start md:items-center pb-6 border-b border-slate-800 gap-4">
         <div>
           <div className="flex items-center gap-3">
             <div className="p-2 bg-indigo-600 rounded-lg">
@@ -165,22 +216,65 @@ export default function Dashboard() {
             Production BullMQ Delayed Job Dispatcher with Atomic Idempotency
           </p>
         </div>
-        <div className="flex items-center gap-3">
+
+        {/* User Info, Slack Button, and Logout */}
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Slack Status / Connect Pill */}
+          {user?.slackConnected ? (
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-950/60 border border-emerald-800/80 rounded-xl text-xs text-emerald-300">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              <MessageSquare className="w-3.5 h-3.5" />
+              <span>Slack Connected ({user.slackChannel || 'Alerts'})</span>
+              <button
+                onClick={handleSlackDisconnect}
+                className="ml-1 text-slate-400 hover:text-rose-400 font-bold"
+                title="Disconnect Slack"
+              >
+                ×
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={handleSlackConnect}
+              className="flex items-center gap-2 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded-xl border border-slate-700 transition-colors shadow-sm"
+            >
+              <MessageSquare className="w-3.5 h-3.5 text-amber-400" />
+              Connect Slack
+            </button>
+          )}
+
+          {/* User Profile Pill */}
+          <div className="flex items-center gap-2.5 px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-xl">
+            {user?.avatar ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={user.avatar} alt="Avatar" className="w-7 h-7 rounded-full object-cover" />
+            ) : (
+              <div className="w-7 h-7 rounded-full bg-indigo-600 text-white font-bold flex items-center justify-center text-xs">
+                {user?.name?.charAt(0) || 'U'}
+              </div>
+            )}
+            <div className="text-left">
+              <p className="text-xs font-semibold text-white leading-tight">{user?.name}</p>
+              <p className="text-[10px] text-slate-400 leading-tight">{user?.email}</p>
+            </div>
+          </div>
+
           <a
             href="http://localhost:4000/admin/queues"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-2 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-medium rounded-lg border border-slate-700 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium rounded-xl border border-slate-700 transition-colors"
           >
-            <Layers className="w-4 h-4 text-indigo-400" />
-            Bull Dashboard
+            <Layers className="w-3.5 h-3.5 text-indigo-400" />
+            Bull Board
           </a>
+
           <button
-            onClick={fetchEmails}
-            className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg border border-slate-700"
-            title="Refresh"
+            onClick={handleLogout}
+            className="p-2 bg-slate-800 hover:bg-rose-950/40 hover:text-rose-400 text-slate-400 rounded-xl border border-slate-700 transition-colors"
+            title="Log out"
           >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            <LogOut className="w-4 h-4" />
           </button>
         </div>
       </header>
@@ -333,7 +427,16 @@ export default function Dashboard() {
                 Sent History
               </button>
             </div>
-            <span className="text-xs text-slate-500">{emails.length} items</span>
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-slate-500">{emails.length} items</span>
+              <button
+                onClick={fetchEmails}
+                className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg border border-slate-700"
+                title="Refresh"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+              </button>
+            </div>
           </div>
 
           {/* Table List */}

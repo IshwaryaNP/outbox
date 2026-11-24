@@ -1,5 +1,6 @@
 import { prisma } from '../db/prisma.js';
 import { emailQueue } from '../queues/email.queue.js';
+import { env } from '../config/env.js';
 import type { EmailJobData } from '../types/index.js';
 
 /**
@@ -9,7 +10,7 @@ import type { EmailJobData } from '../types/index.js';
  * 2. Queries all 'scheduled' emails and ensures they exist in BullMQ.
  * 3. Any missing job is re-added with jobId = email.id.
  */
-export async function reconcileStartupJobs(staleThresholdMinutes = 5): Promise<void> {
+export async function reconcileStartupJobs(staleThresholdMinutes = env.STALE_PROCESSING_THRESHOLD_MINUTES): Promise<void> {
   console.log('🔄 [Reconciliation] Running startup job reconciliation...');
 
   const staleCutoff = new Date(Date.now() - staleThresholdMinutes * 60 * 1000);

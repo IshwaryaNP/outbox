@@ -24,6 +24,8 @@ const envSchema = z.object({
   SLACK_CLIENT_SECRET: z.string().optional().default(''),
   SLACK_REDIRECT_URI: z.string().default('http://localhost:4000/api/slack/callback'),
   SEED_SENDER_COUNT: z.coerce.number().default(3),
+  SMTP_TIMEOUT_MS: z.coerce.number().default(15000), // 15 seconds
+  STALE_PROCESSING_THRESHOLD_MINUTES: z.coerce.number().default(5), // 5 minutes (300,000ms > 15,000ms)
 });
 
 const parsed = envSchema.safeParse(process.env);

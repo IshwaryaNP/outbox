@@ -97,13 +97,17 @@ export function createEmailWorker(): Worker<EmailJobData> {
           console.log(`🔗 [Ethereal Preview]: ${previewUrl}`);
         }
 
-        // 4. ATOMIC UPDATE AFTER SUCCESS
+        // 4. ATOMIC UPDATE AFTER SUCCESS - Always guarantee non-empty messageId
+        const finalMessageId = (info && info.messageId && info.messageId.trim() !== '') 
+          ? info.messageId 
+          : deterministicMessageId;
+
         await prisma.email.update({
           where: { id: emailId },
           data: {
             status: 'sent',
             sentAt: new Date(),
-            messageId: info.messageId || deterministicMessageId,
+            messageId: finalMessageId,
             error: null,
           },
         });

@@ -10,20 +10,13 @@ export async function authMiddleware(
   next: NextFunction
 ): Promise<void> {
   try {
-    // In dev mode, allow a mock user via header X-Dev-User-Id for testing
-    if (env.NODE_ENV === 'development') {
-      const devUserId = req.headers['x-dev-user-id'] as string | undefined;
-      if (devUserId) {
-        const user = await prisma.user.findUnique({ where: { id: devUserId } });
-        if (user) {
-          req.user = { id: user.id, email: user.email, name: user.name, avatar: user.avatar ?? undefined };
-          next();
-          return;
-        }
-      }
+    // 1. Read token strictly from signed/httpOnly cookie or Bearer Authorization header
+    let token = req.cookies?.token as string | undefined;
+
+    if (!token && req.headers.authorization?.startsWith('Bearer ')) {
+      token = req.headers.authorization.split(' ')[1];
     }
 
-    const token = req.cookies?.token as string | undefined;
     if (!token) {
       res.status(401).json({ error: 'Unauthorized: No token provided' });
       return;

@@ -1,6 +1,8 @@
 import nodemailer from 'nodemailer';
 import { prisma } from '../db/prisma.js';
 
+import { env } from '../config/env.js';
+
 interface TransporterCacheItem {
   transporter: nodemailer.Transporter;
   senderEmail: string;
@@ -28,6 +30,9 @@ export async function getTransporterForSender(senderId: string): Promise<Transpo
       user: sender.smtpUser,
       pass: sender.smtpPass,
     },
+    connectionTimeout: env.SMTP_TIMEOUT_MS,
+    greetingTimeout: env.SMTP_TIMEOUT_MS,
+    socketTimeout: env.SMTP_TIMEOUT_MS,
     tls: {
       rejectUnauthorized: false, // Allow Ethereal self-signed certs in dev
     },
