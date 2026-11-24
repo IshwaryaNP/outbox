@@ -111,6 +111,7 @@ export function createEmailWorker(): Worker<EmailJobData> {
             status: 'sent',
             sentAt: new Date(),
             messageId: finalMessageId,
+            previewUrl: previewUrl || null,
             error: null,
           },
         });

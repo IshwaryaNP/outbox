@@ -44,6 +44,7 @@ export async function listEmails(req: Request, res: Response): Promise<void> {
         attempts: true,
         error: true,
         messageId: true,
+        previewUrl: true,
         campaignId: true,
         sender: { select: { email: true, smtpHost: true } },
       },
