@@ -8,6 +8,8 @@ const envSchema = z.object({
   PORT: z.coerce.number().default(4000),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
+  // Railway provides REDIS_URL as a single connection string; individual vars are fallback
+  REDIS_URL: z.string().optional().default(''),
   REDIS_HOST: z.string().default('127.0.0.1'),
   REDIS_PORT: z.coerce.number().default(6379),
   REDIS_PASSWORD: z.string().optional().default(''),
@@ -24,8 +26,8 @@ const envSchema = z.object({
   SLACK_CLIENT_SECRET: z.string().optional().default(''),
   SLACK_REDIRECT_URI: z.string().default('http://localhost:4000/api/slack/callback'),
   SEED_SENDER_COUNT: z.coerce.number().default(3),
-  SMTP_TIMEOUT_MS: z.coerce.number().default(15000), // 15 seconds
-  STALE_PROCESSING_THRESHOLD_MS: z.coerce.number().default(300000), // 5 minutes (300,000ms > 15,000ms)
+  SMTP_TIMEOUT_MS: z.coerce.number().default(15000),
+  STALE_PROCESSING_THRESHOLD_MS: z.coerce.number().default(300000),
   DEV_AUTH_ENABLED: z.coerce.boolean().default(false),
 });
 
