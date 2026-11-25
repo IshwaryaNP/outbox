@@ -3,8 +3,29 @@
 import React from 'react';
 
 export default function LoginPage() {
+  const [demoLoading, setDemoLoading] = React.useState(false);
+
   const handleGoogleLogin = () => {
     window.location.href = '/api/auth/google';
+  };
+
+  const handleDemoLogin = async () => {
+    setDemoLoading(true);
+    try {
+      const res = await fetch('/api/auth/demo', { method: 'POST' });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.token) {
+          localStorage.setItem('auth_token', data.token);
+          window.location.href = '/';
+          return;
+        }
+      }
+    } catch (e) {
+      console.error('Demo login error', e);
+    } finally {
+      setDemoLoading(false);
+    }
   };
 
   return (
@@ -51,6 +72,23 @@ export default function LoginPage() {
                 />
               </svg>
               <span>Continue with Google</span>
+            </button>
+
+            <div className="relative my-4">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-slate-800"></div>
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-slate-900 px-2 text-slate-500">Or Instant Access</span>
+              </div>
+            </div>
+
+            <button
+              onClick={handleDemoLogin}
+              disabled={demoLoading}
+              className="w-full flex justify-center items-center gap-2 py-3 px-4 border border-indigo-500/30 rounded-xl shadow-sm bg-indigo-600/20 text-indigo-300 font-semibold hover:bg-indigo-600/30 transition-colors focus:outline-none"
+            >
+              <span>{demoLoading ? 'Signing in...' : '⚡ Demo / Evaluator Sign In (1-Click)'}</span>
             </button>
           </div>
         </div>

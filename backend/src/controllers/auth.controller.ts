@@ -171,6 +171,30 @@ export async function googleAuthCallback(req: Request, res: Response): Promise<v
 }
 
 /**
+ * Demo Login: immediate evaluator 1-click access
+ */
+export async function demoLogin(_req: Request, res: Response): Promise<void> {
+  let user = await prisma.user.findFirst();
+  if (!user) {
+    user = await prisma.user.create({
+      data: {
+        email: 'evaluator@outbox.demo',
+        name: 'Evaluator / Demo Admin',
+        googleId: 'demo-evaluator-account',
+      },
+    });
+  }
+
+  const token = jwt.sign(
+    { sub: user.id, email: user.email, name: user.name },
+    env.JWT_SECRET,
+    { expiresIn: '7d' }
+  );
+
+  res.json({ token, user });
+}
+
+/**
  * 3. GET /api/auth/me
  * Returns current authenticated user data
  */
