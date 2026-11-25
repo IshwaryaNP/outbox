@@ -80,11 +80,11 @@ router.post('/requeue', async (req: Request, res: Response) => {
     let requeued = 0;
     for (const email of scheduledEmails) {
       try {
-        // Remove existing job if any (to override delay)
+        // Remove existing job if any (unless currently active)
         const existing = await emailQueue.getJob(email.id);
         if (existing) {
           const state = await existing.getState();
-          if (state === 'delayed' || state === 'waiting') {
+          if (state !== 'active') {
             await existing.remove();
           }
         }
