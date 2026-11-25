@@ -29,10 +29,18 @@ router.get('/status', async (_req: Request, res: Response) => {
       select: { recipient: true, sentAt: true, previewUrl: true },
     });
 
+    const recentFailed = await prisma.email.findMany({
+      where: { status: 'failed' },
+      orderBy: { updatedAt: 'desc' },
+      take: 5,
+      select: { recipient: true, error: true, attempts: true, senderId: true },
+    });
+
     res.json({
       db: { scheduled, processing, sent, failed },
       queue: { waiting, active, delayed, completed },
       recentSent,
+      recentFailed,
       timestamp: new Date().toISOString(),
     });
   } catch (err) {
