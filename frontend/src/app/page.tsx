@@ -53,6 +53,7 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState<'scheduled' | 'sent'>('scheduled');
   const [emails, setEmails] = useState<EmailItem[]>([]);
   const [loading, setLoading] = useState(false);
+  const [stats, setStats] = useState<{ scheduled: number; processing: number; sent: number; failed: number } | null>(null);
 
   // Form
   const [subject, setSubject] = useState('');
@@ -129,6 +130,14 @@ export default function Dashboard() {
         }
         setEmails(items);
       }
+      // Fetch summary stats
+      try {
+        const sRes = await fetch('https://wholesome-quietude-production.up.railway.app/api/admin/status');
+        if (sRes.ok) {
+          const sData = await sRes.json();
+          if (sData.db) setStats(sData.db);
+        }
+      } catch { /* ignore */ }
     } catch { /* ignore */ } finally { setLoading(false); }
   }, [activeTab]);
 
@@ -280,7 +289,35 @@ export default function Dashboard() {
       </header>
 
       {/* Main */}
-      <div className="max-w-6xl mx-auto px-6 py-8 grid grid-cols-1 lg:grid-cols-5 gap-6">
+      <div className="max-w-6xl mx-auto px-6 py-6 space-y-6">
+        {/* Summary Stats Bar */}
+        {stats && (
+          <div className="grid grid-cols-3 gap-4">
+            <div onClick={() => setActiveTab('scheduled')} className="cursor-pointer bg-slate-900 border border-slate-800 hover:border-amber-500/40 rounded-xl p-4 flex items-center justify-between transition-colors">
+              <div>
+                <p className="text-xs text-slate-400">In Queue</p>
+                <p className="text-2xl font-bold text-amber-400 mt-0.5">{stats.scheduled + stats.processing}</p>
+              </div>
+              <span className="text-xs px-2.5 py-1 rounded-full bg-amber-950/60 text-amber-400 border border-amber-800/60">Waiting</span>
+            </div>
+            <div onClick={() => setActiveTab('sent')} className="cursor-pointer bg-slate-900 border border-slate-800 hover:border-emerald-500/40 rounded-xl p-4 flex items-center justify-between transition-colors">
+              <div>
+                <p className="text-xs text-slate-400">Sent &amp; Delivered</p>
+                <p className="text-2xl font-bold text-emerald-400 mt-0.5">{stats.sent}</p>
+              </div>
+              <span className="text-xs px-2.5 py-1 rounded-full bg-emerald-950/60 text-emerald-400 border border-emerald-800/60">Completed</span>
+            </div>
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex items-center justify-between">
+              <div>
+                <p className="text-xs text-slate-400">Failed</p>
+                <p className="text-2xl font-bold text-rose-400 mt-0.5">{stats.failed}</p>
+              </div>
+              <span className="text-xs px-2.5 py-1 rounded-full bg-slate-800 text-slate-400 border border-slate-700">Auto-refreshes</span>
+            </div>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         {/* LEFT: Compose */}
         <div className="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-lg h-fit">
           <h2 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
@@ -425,14 +462,17 @@ export default function Dashboard() {
                         <ExternalLink className="w-3 h-3" /> View email
                       </a>
                     )}
-                    <p className="text-[11px] text-slate-600 mt-0.5">
-                      {new Date(email.scheduledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    <p className="text-[11px] text-slate-500 mt-0.5">
+                      {email.status === 'sent' && email.sentAt
+                        ? `Sent ${new Date(email.sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+                        : new Date(email.scheduledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </p>
                   </div>
                 </div>
               ))
             )}
           </div>
+        </div>
         </div>
       </div>
     </div>
