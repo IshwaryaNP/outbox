@@ -158,7 +158,7 @@ export default function Dashboard() {
       const startTime = scheduledTime ? new Date(scheduledTime).toISOString() : new Date().toISOString();
       const res = await fetch(`${API_BASE}/campaigns/schedule`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getHeaders({ 'Content-Type': 'application/json' }),
         credentials: 'include',
         body: JSON.stringify({
           subject,
