@@ -9,11 +9,17 @@ export default function LoginPage() {
     window.location.href = '/api/auth/google';
   };
 
+  const RAILWAY_API = 'https://wholesome-quietude-production.up.railway.app';
+
   const handleDemoLogin = async () => {
     setDemoLoading(true);
     try {
-      const res = await fetch('/api/auth/demo', { method: 'POST' });
-      if (res.ok) {
+      // Try proxy first, fall back to direct Railway URL (cross-domain safe)
+      let res = await fetch('/api/auth/demo', { method: 'POST' }).catch(() => null);
+      if (!res || !res.ok) {
+        res = await fetch(`${RAILWAY_API}/api/auth/demo`, { method: 'POST' });
+      }
+      if (res && res.ok) {
         const data = await res.json();
         if (data.token) {
           localStorage.setItem('auth_token', data.token);
@@ -21,8 +27,10 @@ export default function LoginPage() {
           return;
         }
       }
+      alert('Demo login failed. Please try again.');
     } catch (e) {
       console.error('Demo login error', e);
+      alert('Demo login error: ' + String(e));
     } finally {
       setDemoLoading(false);
     }

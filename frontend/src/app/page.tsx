@@ -106,11 +106,29 @@ export default function Dashboard() {
   const fetchEmails = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/emails?status=${activeTab}&limit=50`, {
+      // Queue tab: fetch both scheduled AND processing emails
+      const statusParam = activeTab === 'scheduled' ? 'scheduled' : 'sent';
+      const res = await fetch(`${API_BASE}/emails?status=${statusParam}&limit=50`, {
         headers: getHeaders(),
         credentials: 'include',
       });
-      if (res.ok) { const data = await res.json(); setEmails(data.data || []); }
+      if (res.ok) {
+        const data = await res.json();
+        let items = data.data || [];
+        // For Queue tab, also fetch 'processing' emails and merge
+        if (activeTab === 'scheduled') {
+          try {
+            const r2 = await fetch(`${API_BASE}/emails?status=processing&limit=50`, {
+              headers: getHeaders(), credentials: 'include',
+            });
+            if (r2.ok) {
+              const d2 = await r2.json();
+              items = [...(d2.data || []), ...items];
+            }
+          } catch { /* ignore */ }
+        }
+        setEmails(items);
+      }
     } catch { /* ignore */ } finally { setLoading(false); }
   }, [activeTab]);
 
@@ -126,6 +144,25 @@ export default function Dashboard() {
     localStorage.removeItem('auth_token');
     await fetch(`${API_BASE}/auth/logout`, { method: 'POST', credentials: 'include' });
     router.push('/login');
+  };
+
+  const handleRequeue = async () => {
+    const RAILWAY_API = 'https://wholesome-quietude-production.up.railway.app';
+    try {
+      const res = await fetch(`${RAILWAY_API}/api/admin/requeue`, {
+        method: 'POST',
+        headers: { 'x-admin-password': 'admin1234' },
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setStatus({ type: 'success', message: `⚡ ${data.message}` });
+        setTimeout(fetchEmails, 3000);
+      } else {
+        setStatus({ type: 'error', message: data.error || 'Requeue failed' });
+      }
+    } catch (err) {
+      setStatus({ type: 'error', message: 'Requeue request failed: ' + String(err) });
+    }
   };
 
   const handleSlackConnect = () => { window.location.href = `${API_BASE}/slack/connect`; };
@@ -229,7 +266,7 @@ export default function Dashboard() {
               <span className="text-xs text-slate-300 max-w-[120px] truncate">{user?.name}</span>
             </div>
 
-            <a href="http://localhost:4000/admin/queues" target="_blank" rel="noopener noreferrer"
+            <a href="https://wholesome-quietude-production.up.railway.app/admin/queues" target="_blank" rel="noopener noreferrer"
               className="flex items-center gap-1 px-2.5 py-1 text-xs text-slate-400 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-full transition-colors">
               <Layers className="w-3 h-3 text-indigo-400" /> Bull Board
             </a>
@@ -352,6 +389,12 @@ export default function Dashboard() {
             </div>
             <div className="flex items-center gap-2 text-slate-500 text-xs">
               <span>{emails.length} items</span>
+              {activeTab === 'scheduled' && emails.length > 0 && (
+                <button onClick={handleRequeue} title="Force process now"
+                  className="px-2 py-1 bg-indigo-600/20 hover:bg-indigo-600/40 border border-indigo-500/30 rounded text-indigo-400 hover:text-indigo-300 text-[11px] font-medium transition-colors">
+                  ⚡ Force Now
+                </button>
+              )}
               <button onClick={fetchEmails} title="Refresh"
                 className="p-1 hover:text-slate-300 transition-colors">
                 <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
