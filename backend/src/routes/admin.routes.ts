@@ -62,10 +62,10 @@ router.post('/requeue', async (req: Request, res: Response) => {
   }
 
   try {
-    // Reset any stuck 'processing' emails to 'scheduled'
+    // Reset any stuck 'processing' or 'failed' emails to 'scheduled'
     const reset = await prisma.email.updateMany({
-      where: { status: 'processing' },
-      data: { status: 'scheduled' },
+      where: { status: { in: ['processing', 'failed'] } },
+      data: { status: 'scheduled', attempts: 0, error: null },
     });
 
     // Get all scheduled emails
