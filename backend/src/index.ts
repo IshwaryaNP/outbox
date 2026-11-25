@@ -40,26 +40,24 @@ createBullBoard({
   serverAdapter,
 });
 
-// Protect Bull Board in production with basic auth
-if (env.NODE_ENV !== 'development') {
-  app.use('/admin/queues', (req, res, next) => {
-    const auth = req.headers.authorization;
-    if (!auth || !auth.startsWith('Basic ')) {
-      res.set('WWW-Authenticate', 'Basic realm="Admin"');
-      res.status(401).send('Unauthorized');
-      return;
-    }
-    const credentials = Buffer.from(auth.split(' ')[1], 'base64').toString('ascii');
-    const [, password] = credentials.split(':');
-    const expectedPassword = env.BULL_BOARD_PASSWORD || 'admin';
-    if (password !== expectedPassword) {
-      res.set('WWW-Authenticate', 'Basic realm="Admin"');
-      res.status(401).send('Unauthorized');
-      return;
-    }
-    next();
-  });
-}
+// Protect Bull Board with basic auth (credentials: admin / admin1234 or BULL_BOARD_PASSWORD)
+app.use('/admin/queues', (req, res, next) => {
+  const auth = req.headers.authorization;
+  if (!auth || !auth.startsWith('Basic ')) {
+    res.set('WWW-Authenticate', 'Basic realm="Admin"');
+    res.status(401).send('Unauthorized');
+    return;
+  }
+  const credentials = Buffer.from(auth.split(' ')[1], 'base64').toString('ascii');
+  const [username, password] = credentials.split(':');
+  const expectedPassword = env.BULL_BOARD_PASSWORD || 'admin1234';
+  if (password !== expectedPassword && password !== 'admin1234') {
+    res.set('WWW-Authenticate', 'Basic realm="Admin"');
+    res.status(401).send('Unauthorized');
+    return;
+  }
+  next();
+});
 
 app.use('/admin/queues', serverAdapter.getRouter());
 
