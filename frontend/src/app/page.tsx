@@ -456,10 +456,10 @@ export default function Dashboard() {
                   </div>
                   <div className="shrink-0 text-right">
                     <StatusBadge status={email.status} />
-                    {email.status === 'sent' && email.previewUrl && (
-                      <a href={email.previewUrl} target="_blank" rel="noopener noreferrer"
+                    {email.status === 'sent' && (
+                      <a href={email.previewUrl || 'https://ethereal.email/messages'} target="_blank" rel="noopener noreferrer"
                         className="mt-1 flex items-center justify-end gap-1 text-[11px] text-indigo-400 hover:text-indigo-300">
-                        <ExternalLink className="w-3 h-3" /> View email
+                        <ExternalLink className="w-3 h-3" /> Inbox
                       </a>
                     )}
                     <p className="text-[11px] text-slate-500 mt-0.5">
