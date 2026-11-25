@@ -54,7 +54,8 @@ export async function initiateGoogleAuth(req: Request, res: Response): Promise<v
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
-    res.redirect(`${env.FRONTEND_URL}`);
+    // Pass token in URL hash/param as an unblockable fallback across different domains
+    res.redirect(`${env.FRONTEND_URL}/?token=${token}`);
     return;
   }
 
@@ -161,7 +162,8 @@ export async function googleAuthCallback(req: Request, res: Response): Promise<v
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
-    res.redirect(`${env.FRONTEND_URL}`);
+    // Pass token in URL hash/param as an unblockable fallback across different domains
+    res.redirect(`${env.FRONTEND_URL}/?token=${token}`);
   } catch (err) {
     console.error('[Google OAuth] Unexpected callback error:', err);
     res.redirect(`${env.FRONTEND_URL}/login?error=oauth_error`);

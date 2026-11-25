@@ -67,7 +67,24 @@ export default function Dashboard() {
 
   const fetchUser = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE}/auth/me`, { credentials: 'include' });
+      // Check URL for token (from cross-domain OAuth redirect)
+      const params = new URLSearchParams(window.location.search);
+      const urlToken = params.get('token');
+      if (urlToken) {
+        localStorage.setItem('auth_token', urlToken);
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+
+      const storedToken = localStorage.getItem('auth_token');
+      const headers: Record<string, string> = {};
+      if (storedToken) {
+        headers['Authorization'] = `Bearer ${storedToken}`;
+      }
+
+      const res = await fetch(`${API_BASE}/auth/me`, {
+        headers,
+        credentials: 'include',
+      });
       if (!res.ok) { router.push('/login'); return; }
       const data = await res.json();
       setUser(data.user);
@@ -78,10 +95,21 @@ export default function Dashboard() {
     }
   }, [router]);
 
+  const getHeaders = (extra: Record<string, string> = {}) => {
+    const storedToken = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+    return {
+      ...(storedToken ? { Authorization: `Bearer ${storedToken}` } : {}),
+      ...extra,
+    };
+  };
+
   const fetchEmails = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/emails?status=${activeTab}&limit=50`, { credentials: 'include' });
+      const res = await fetch(`${API_BASE}/emails?status=${activeTab}&limit=50`, {
+        headers: getHeaders(),
+        credentials: 'include',
+      });
       if (res.ok) { const data = await res.json(); setEmails(data.data || []); }
     } catch { /* ignore */ } finally { setLoading(false); }
   }, [activeTab]);
@@ -95,6 +123,7 @@ export default function Dashboard() {
   }, [user, fetchEmails]);
 
   const handleLogout = async () => {
+    localStorage.removeItem('auth_token');
     await fetch(`${API_BASE}/auth/logout`, { method: 'POST', credentials: 'include' });
     router.push('/login');
   };
